@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
@@ -7,6 +7,7 @@ function App(): JSX.Element {
   const [message, setMessage] = useState<string>('');
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [userConnected, setUserConnected] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null); // Referencia al final del contenedor de mensajes
 
   interface IMessage {
     _id: string;
@@ -38,6 +39,17 @@ function App(): JSX.Element {
     };
   }, []);
 
+  // Función para hacer scroll hacia abajo al final del contenedor de mensajes
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom(); // Llamar a la función de desplazamiento cada vez que cambien los mensajes
+  }, [messages]);
+
   const sendMessage = () => {
     if (message.trim() !== '') {
       socket.emit('message', { text: message });
@@ -64,6 +76,7 @@ function App(): JSX.Element {
             <p className="text">{msg.text}</p>
           </div>
         ))}
+        <div ref={messagesEndRef} /> {/* Referencia al final del contenedor de mensajes */}
       </div>
       <div className="container-send">
         <input
@@ -98,6 +111,7 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
+
 
 
 

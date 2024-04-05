@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
+const messageSound = new Audio('/audio/noti.mpeg'); // Reemplaza con la ruta correcta de tu archivo de sonido
 
 function App(): JSX.Element {
   const [message, setMessage] = useState<string>('');
@@ -23,6 +24,7 @@ function App(): JSX.Element {
 
     socket.on('message', (data: IMessage) => {
       setMessages((prevMessages) => [...prevMessages, data]);
+      playMessageSound(); // Reproducir sonido cuando llegue un nuevo mensaje
     });
 
     socket.on('connect', () => {
@@ -55,6 +57,11 @@ function App(): JSX.Element {
       socket.emit('message', { text: message });
       setMessage('');
     }
+  };
+
+  // Función para reproducir el sonido del mensaje
+  const playMessageSound = () => {
+    messageSound.play();
   };
 
   return (
@@ -111,6 +118,7 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
+
 
 
 

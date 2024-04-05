@@ -47,7 +47,7 @@ function App(): JSX.Element {
 
   return (
     <div className="mini-chat-container">
-      <h1>Chat flipeo</h1>
+      <h1>Chat flipeot</h1>
       
       <div className="messages-container">
         {messages.map((msg, index) => (

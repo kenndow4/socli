@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { FaArrowUp } from 'react-icons/fa';
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
 const messageSound = new Audio('/audio/noti.mpeg'); // Reemplaza con la ruta correcta de tu archivo de sonido
@@ -92,7 +93,7 @@ function App(): JSX.Element {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Escribe un mensaje"
         />
-        <button onClick={sendMessage}>Enviar</button>
+        <button onClick={sendMessage}><FaArrowUp/></button>
       </div>
     </div>
   );

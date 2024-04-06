@@ -28,6 +28,7 @@ code {
 h1 {
   text-align: center;
   position: sticky;
+  font-size: 27px;
   padding: 10px 0;
   background-color: #fff;
   top: 0;
@@ -77,19 +78,22 @@ h1 {
   align-items: center;
   position: sticky;
   bottom: 0;
-  background-color: #f9f9f9;
-  border-top: 1px solid #ccc;
+  background-color: #fff;
+  
+  justify-content: space-between;
   padding: 10px;
   width: 100%;
 }
 
 input[type='text'] {
-  width: calc(100% - 70px);
+  width: 90%;
   padding: 10px;
+  height: 40px;
   margin-top: 10px;
   margin-right: 10px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
+  border-radius: 50px;
+  /* border: 1px solid #ccc; */
+  border: none;
   background-color: #e1e1e1;
 }
 
@@ -100,11 +104,17 @@ input[type='text']::placeholder {
 button {
   padding: 10px 20px;
   margin-top: 10px;
-  border-radius: 5px;
-  background-color: #7289da;
+  border-radius: 100%;
+  background-color: #000;
   color: #fff;
   border: none;
   cursor: pointer;
+  
+  
+  
+  width: 40px;
+  height: 40px;
+  color: #fff;
 }
 
 button:hover {

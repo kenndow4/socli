@@ -22,7 +22,8 @@ code {
   max-width: 400px;
   margin: 0 auto;
   height: 100vh;
-  padding: 0 20px;
+  /* background: red; */
+  
   
 }
 
@@ -30,6 +31,7 @@ h1 {
   text-align: center;
   position: sticky;
   padding: 10px 0;
+  background-color: #fff;
   top: 5px;
 }
 
@@ -42,11 +44,14 @@ h1 {
 .messages-container {
   max-height: calc(100vh - 200px); /* Ajustar el máximo de altura del contenedor de mensajes */
   overflow-y: auto;
+  background: #efefef;
+  padding: 0 20px;
 }
 
 .message {
-  margin-bottom: 10px;
+  margin: 10px 0px;
   border-radius: 5px;
+  
 }
 
 .ip-avatar {

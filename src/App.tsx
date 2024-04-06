@@ -65,6 +65,19 @@ function App(): JSX.Element {
     messageSound.play();
   };
 
+  // Función para dar formato a los mensajes y convertir los enlaces en enlaces clicables
+  const formatMessage = (text: string): JSX.Element[] => {
+    const regex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.match(regex)) {
+        return <a key={index} href={part} target="_blank" rel="noopener noreferrer">{part}</a>;
+      } else {
+        return <span key={index}>{part}</span>;
+      }
+    });
+  };
+
   return (
     <div className="mini-chat-container">
       <h1>Chat flipeot</h1>
@@ -81,7 +94,7 @@ function App(): JSX.Element {
                 </p>
               </div>
             </div>
-            <p className="text">{msg.text}</p>
+            <p className="text">{formatMessage(msg.text)}</p>
           </div>
         ))}
         <div ref={messagesEndRef} /> {/* Referencia al final del contenedor de mensajes */}
@@ -93,7 +106,7 @@ function App(): JSX.Element {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Escribe un mensaje"
         />
-        <button onClick={sendMessage}><p><FaArrowUp/></p></button>
+        <button onClick={sendMessage}><FaArrowUp/></button>
       </div>
     </div>
   );
@@ -119,6 +132,7 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
+
 
 
 

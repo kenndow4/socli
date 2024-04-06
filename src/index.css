@@ -20,6 +20,9 @@ code {
 
 h1 {
   text-align: center;
+  position: sticky;
+  
+  top: 10px;
 }
 
 .cont-a-h {

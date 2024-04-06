@@ -109,13 +109,15 @@ button {
   color: #fff;
   border: none;
   cursor: pointer;
-  
-  
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   width: 40px;
   height: 40px;
   color: #fff;
 }
+
 
 button:hover {
   background-color: #5f73bc;
@@ -123,4 +125,8 @@ button:hover {
 
 button:active {
   background-color: #4b5a95;
+}
+
+button p{
+  font-size: 17px;
 }

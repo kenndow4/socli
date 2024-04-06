@@ -93,7 +93,7 @@ function App(): JSX.Element {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Escribe un mensaje"
         />
-        <button onClick={sendMessage}><FaArrowUp/></button>
+        <button onClick={sendMessage}><p><FaArrowUp/></p></button>
       </div>
     </div>
   );

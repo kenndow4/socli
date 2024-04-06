@@ -43,7 +43,7 @@ h1 {
 .messages-container {
   /* max-height: calc(100vh - 200px); Ajustar el máximo de altura del contenedor de mensajes */
   overflow-y: auto;
-  background: #f6f6f6;
+  background: #fdfeff;
   padding: 0 20px;
 }
 

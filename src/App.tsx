@@ -1,31 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import SimplePeer, { SignalData } from 'simple-peer';
 import { FaArrowUp } from 'react-icons/fa';
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
-const messageSound = new Audio('/audio/noti.mpeg'); // Reemplaza con la ruta correcta de tu archivo de sonido
+const messageSound = new Audio('/audio/noti.mpeg');
+
+interface IMessage {
+  _id: string;
+  text: string;
+  ip: string;
+  createdAt: string;
+}
 
 function App(): JSX.Element {
   const [message, setMessage] = useState<string>('');
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [userConnected, setUserConnected] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null); // Referencia al final del contenedor de mensajes
+  const [callAccepted, setCallAccepted] = useState<boolean>(false);
+  const [peer, setPeer] = useState<SimplePeer.Instance | null>(null);
+  const [incomingCall, setIncomingCall] = useState<boolean>(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [callerSignal, setCallerSignal] = useState<SignalData | null>(null);
+  const [caller, setCaller] = useState<string>('');
 
-  interface IMessage {
-    _id: string;
-    text: string;
-    ip: string;
-    createdAt: string;
-  }
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const myVideoRef = useRef<HTMLVideoElement>(null);
+  const userVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    fetchMessages();
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      setStream(stream);
+      if (myVideoRef.current) {
+        myVideoRef.current.srcObject = stream;
+      }
+    });
+
     socket.on('messages', (data: IMessage[]) => {
       setMessages(data);
     });
 
     socket.on('message', (data: IMessage) => {
       setMessages((prevMessages) => [...prevMessages, data]);
-      playMessageSound(); // Reproducir sonido cuando llegue un nuevo mensaje
+      playMessageSound(); 
     });
 
     socket.on('connect', () => {
@@ -36,36 +55,52 @@ function App(): JSX.Element {
       setUserConnected(false);
     });
 
+    socket.on('signal', (data: { from: string, signal: SignalData }) => {
+      setIncomingCall(true);
+      setCaller(data.from);
+      setCallerSignal(data.signal);
+    });
+
     return () => {
       socket.off('connect');
       socket.off('disconnect');
+      socket.off('signal');
     };
   }, []);
 
-  // Función para hacer scroll hacia abajo al final del contenedor de mensajes
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  const fetchMessages = async () => {
+    try {
+      const response = await fetch('/api/messages');
+      const data = await response.json();
+      setMessages(data);
+    } catch (error) {
+      console.error('Error al obtener mensajes:', error);
     }
   };
 
-  useEffect(() => {
-    scrollToBottom(); // Llamar a la función de desplazamiento cada vez que cambien los mensajes
-  }, [messages]);
-
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (message.trim() !== '') {
-      socket.emit('message', { text: message });
-      setMessage('');
+      try {
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ text: message })
+        });
+        const newMessage = await response.json();
+        socket.emit('message', newMessage);
+        setMessage('');
+      } catch (error) {
+        console.error('Error al enviar mensaje:', error);
+      }
     }
   };
 
-  // Función para reproducir el sonido del mensaje
   const playMessageSound = () => {
     messageSound.play();
   };
 
-  // Función para dar formato a los mensajes y convertir los enlaces en enlaces clicables
   const formatMessage = (text: string): JSX.Element[] => {
     const regex = /(https?:\/\/[^\s]+)/g;
     const parts = text.split(regex);
@@ -76,6 +111,53 @@ function App(): JSX.Element {
         return <span key={index}>{part}</span>;
       }
     });
+  };
+
+  const callUser = (id: string) => {
+    const peer = new SimplePeer({
+      initiator: true,
+      trickle: false,
+      stream: stream!
+    });
+
+    peer.on('signal', (data: SignalData) => {
+      socket.emit('signal', { signal: data, to: id });
+    });
+
+    peer.on('stream', (stream: MediaStream) => {
+      if (userVideoRef.current) {
+        userVideoRef.current.srcObject = stream;
+      }
+    });
+
+    socket.on('signal', (data: { signal: SignalData }) => {
+      peer.signal(data.signal);
+    });
+
+    setPeer(peer);
+  };
+
+  const acceptCall = () => {
+    setCallAccepted(true);
+    const peer = new SimplePeer({
+      initiator: false,
+      trickle: false,
+      stream: stream!
+    });
+
+    peer.on('signal', (data: SignalData) => {
+      socket.emit('signal', { signal: data, to: caller });
+    });
+
+    peer.on('stream', (stream: MediaStream) => {
+      if (userVideoRef.current) {
+        userVideoRef.current.srcObject = stream;
+      }
+    });
+
+    peer.signal(callerSignal!);
+
+    setPeer(peer);
   };
 
   return (
@@ -97,7 +179,7 @@ function App(): JSX.Element {
             <p className="text">{formatMessage(msg.text)}</p>
           </div>
         ))}
-        <div ref={messagesEndRef} /> {/* Referencia al final del contenedor de mensajes */}
+        <div ref={messagesEndRef} />
       </div>
       <div className="container-send">
         <input
@@ -108,11 +190,21 @@ function App(): JSX.Element {
         />
         <button onClick={sendMessage}><p><FaArrowUp/></p></button>
       </div>
+      <div className="video-container">
+        <video ref={myVideoRef} autoPlay playsInline muted />
+        {callAccepted && <video ref={userVideoRef} autoPlay playsInline />}
+      </div>
+      <button onClick={() => callUser('some-user-id')}>Llamar</button>
+      {incomingCall && !callAccepted && (
+        <div>
+          <h1>Alguien está llamando...</h1>
+          <button onClick={acceptCall}>Aceptar</button>
+        </div>
+      )}
     </div>
   );
 }
 
-// Función para dar formato a la hora del mensaje
 function formatMessageTime(timestamp: string): string {
   const date = new Date(timestamp);
   const hours = date.getHours();
@@ -121,7 +213,6 @@ function formatMessageTime(timestamp: string): string {
   return time;
 }
 
-// Función para dar formato a la fecha
 function formatDate(timestamp: string): string {
   const date = new Date(timestamp);
   const year = date.getFullYear();
@@ -132,8 +223,6 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
-
-
 
 
 

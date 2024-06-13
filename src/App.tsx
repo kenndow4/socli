@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { FaArrowUp, FaMicrophone, FaStop } from 'react-icons/fa';
+import { FaArrowUp } from 'react-icons/fa';
+import './App.css'; // Asegúrate de crear y usar este archivo CSS
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
-const messageSound = new Audio('/audio/noti.mpeg');
+const messageSound = new Audio('/audio/noti.mpeg'); // Reemplaza con la ruta correcta de tu archivo de sonido
 
 function App(): JSX.Element {
   const [message, setMessage] = useState<string>('');
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [userConnected, setUserConnected] = useState<boolean>(false);
-  const [recording, setRecording] = useState<boolean>(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState<boolean>(true); // Estado de carga
+  const messagesEndRef = useRef<HTMLDivElement>(null); // Referencia al final del contenedor de mensajes
 
   interface IMessage {
     _id: string;
-    text?: string;
-    audioUrl?: string;
+    text: string;
     ip: string;
     createdAt: string;
   }
@@ -25,11 +23,12 @@ function App(): JSX.Element {
   useEffect(() => {
     socket.on('messages', (data: IMessage[]) => {
       setMessages(data);
+      setLoading(false); // Deja de cargar cuando se obtienen los mensajes
     });
 
     socket.on('message', (data: IMessage) => {
       setMessages((prevMessages) => [...prevMessages, data]);
-      playMessageSound();
+      playMessageSound(); // Reproducir sonido cuando llegue un nuevo mensaje
     });
 
     socket.on('connect', () => {
@@ -46,6 +45,7 @@ function App(): JSX.Element {
     };
   }, []);
 
+  // Función para hacer scroll hacia abajo al final del contenedor de mensajes
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -53,7 +53,7 @@ function App(): JSX.Element {
   };
 
   useEffect(() => {
-    scrollToBottom();
+    scrollToBottom(); // Llamar a la función de desplazamiento cada vez que cambien los mensajes
   }, [messages]);
 
   const sendMessage = () => {
@@ -63,51 +63,12 @@ function App(): JSX.Element {
     }
   };
 
-  const startRecording = async () => {
-    if (!recording) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          setAudioBlob(event.data);
-        }
-      };
-      recorder.start();
-      setMediaRecorder(recorder);
-      setRecording(true);
-    }
-  };
-
-  const stopRecording = () => {
-    if (recording && mediaRecorder) {
-      mediaRecorder.stop();
-      setRecording(false);
-    }
-  };
-
-  const sendAudioMessage = async () => {
-    if (audioBlob) {
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-
-      const response = await fetch('https://socketback-6.onrender.com/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (data.audioUrl) {
-        socket.emit('message', { audioUrl: data.audioUrl });
-      }
-
-      setAudioBlob(null);
-    }
-  };
-
+  // Función para reproducir el sonido del mensaje
   const playMessageSound = () => {
     messageSound.play();
   };
 
+  // Función para dar formato a los mensajes y convertir los enlaces en enlaces clicables
   const formatMessage = (text: string): JSX.Element[] => {
     const regex = /(https?:\/\/[^\s]+)/g;
     const parts = text.split(regex);
@@ -124,46 +85,43 @@ function App(): JSX.Element {
     <div className="mini-chat-container">
       <h1>Chat flipeot</h1>
       
-      <div className="messages-container">
-        {messages.map((msg, index) => (
-          <div key={index} className="message">
-            <div className="cont-a-h">
-              <p className='ip-avatar'>{msg.ip}</p> 
-              <div className="message-time">
-                <p>
-                  {formatMessageTime(msg.createdAt)} {formatDate(msg.createdAt)}
-                  <span style={{ color: userConnected ? '#4CAF50' : '#FF5733', marginLeft:"10px" }}>●</span>
-                </p>
+      {loading ? ( // Mostrar mensaje de carga si está cargando
+        <div className="loading">Loading KZX...</div>
+      ) : (
+        <>
+          <div className="messages-container">
+            {messages.map((msg, index) => (
+              <div key={index} className="message">
+                <div className="cont-a-h">
+                  <p className='ip-avatar'>{msg.ip}</p> 
+                  <div className="message-time">
+                    <p>
+                      {formatMessageTime(msg.createdAt)} {formatDate(msg.createdAt)}
+                      <span style={{ color: userConnected ? '#4CAF50' : '#FF5733', marginLeft:"10px" }}>●</span>
+                    </p>
+                  </div>
+                </div>
+                <p className="text">{formatMessage(msg.text)}</p>
               </div>
-            </div>
-            {msg.text && <p className="text">{formatMessage(msg.text)}</p>}
-            {msg.audioUrl && (
-              <audio controls>
-                <source src={msg.audioUrl} type="audio/mpeg" />
-                Tu navegador no soporta el elemento de audio.
-              </audio>
-            )}
+            ))}
+            <div ref={messagesEndRef} /> {/* Referencia al final del contenedor de mensajes */}
           </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="container-send">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Escribe un mensaje"
-        />
-        <button onClick={sendMessage}><p><FaArrowUp/></p></button>
-        <button onMouseDown={startRecording} onMouseUp={stopRecording}>
-          {recording ? <FaStop /> : <FaMicrophone />}
-        </button>
-        {audioBlob && <button onClick={sendAudioMessage}>Enviar Audio</button>}
-      </div>
+          <div className="container-send">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Escribe un mensaje"
+            />
+            <button onClick={sendMessage}><p><FaArrowUp/></p></button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
+// Función para dar formato a la hora del mensaje
 function formatMessageTime(timestamp: string): string {
   const date = new Date(timestamp);
   const hours = date.getHours();
@@ -172,6 +130,7 @@ function formatMessageTime(timestamp: string): string {
   return time;
 }
 
+// Función para dar formato a la fecha
 function formatDate(timestamp: string): string {
   const date = new Date(timestamp);
   const year = date.getFullYear();
@@ -182,11 +141,6 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
-
-
-
-
-
 
 
 

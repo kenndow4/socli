@@ -130,7 +130,7 @@ function App(): JSX.Element {
       }
     });
 
-    socket.on('signal', (data: { signal: SignalData }) => {
+    socket.on('signal', (data: { from: string, signal: SignalData }) => {
       peer.signal(data.signal);
     });
 
@@ -194,7 +194,7 @@ function App(): JSX.Element {
         <video ref={myVideoRef} autoPlay playsInline muted />
         {callAccepted && <video ref={userVideoRef} autoPlay playsInline />}
       </div>
-      <button onClick={() => callUser('some-user-id')}>Llamar</button>
+      <button onClick={() => callUser('some-user-id')} className='bg-blue-500'>Llamar</button>
       {incomingCall && !callAccepted && (
         <div>
           <h1>Alguien está llamando...</h1>
@@ -223,8 +223,6 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
-
-
 
 
 

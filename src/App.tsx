@@ -1,50 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import SimplePeer, { SignalData } from 'simple-peer';
-import { FaArrowUp } from 'react-icons/fa';
+import { FaArrowUp, FaMicrophone, FaStop } from 'react-icons/fa';
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
 const messageSound = new Audio('/audio/noti.mpeg');
-
-interface IMessage {
-  _id: string;
-  text: string;
-  ip: string;
-  createdAt: string;
-}
 
 function App(): JSX.Element {
   const [message, setMessage] = useState<string>('');
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [userConnected, setUserConnected] = useState<boolean>(false);
-  const [callAccepted, setCallAccepted] = useState<boolean>(false);
-  const [peer, setPeer] = useState<SimplePeer.Instance | null>(null);
-  const [incomingCall, setIncomingCall] = useState<boolean>(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [callerSignal, setCallerSignal] = useState<SignalData | null>(null);
-  const [caller, setCaller] = useState<string>('');
-
+  const [recording, setRecording] = useState<boolean>(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const myVideoRef = useRef<HTMLVideoElement>(null);
-  const userVideoRef = useRef<HTMLVideoElement>(null);
+
+  interface IMessage {
+    _id: string;
+    text?: string;
+    audioUrl?: string;
+    ip: string;
+    createdAt: string;
+  }
 
   useEffect(() => {
-    fetchMessages();
-
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      setStream(stream);
-      if (myVideoRef.current) {
-        myVideoRef.current.srcObject = stream;
-      }
-    });
-
     socket.on('messages', (data: IMessage[]) => {
       setMessages(data);
     });
 
     socket.on('message', (data: IMessage) => {
       setMessages((prevMessages) => [...prevMessages, data]);
-      playMessageSound(); 
+      playMessageSound();
     });
 
     socket.on('connect', () => {
@@ -55,45 +40,67 @@ function App(): JSX.Element {
       setUserConnected(false);
     });
 
-    socket.on('signal', (data: { from: string, signal: SignalData }) => {
-      setIncomingCall(true);
-      setCaller(data.from);
-      setCallerSignal(data.signal);
-    });
-
     return () => {
       socket.off('connect');
       socket.off('disconnect');
-      socket.off('signal');
     };
   }, []);
 
-  const fetchMessages = async () => {
-    try {
-      const response = await fetch('/api/messages');
-      const data = await response.json();
-      setMessages(data);
-    } catch (error) {
-      console.error('Error al obtener mensajes:', error);
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  const sendMessage = async () => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const sendMessage = () => {
     if (message.trim() !== '') {
-      try {
-        const response = await fetch('/api/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ text: message })
-        });
-        const newMessage = await response.json();
-        socket.emit('message', newMessage);
-        setMessage('');
-      } catch (error) {
-        console.error('Error al enviar mensaje:', error);
+      socket.emit('message', { text: message });
+      setMessage('');
+    }
+  };
+
+  const startRecording = async () => {
+    if (!recording) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setAudioBlob(event.data);
+        }
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setRecording(true);
+    }
+  };
+
+  const stopRecording = () => {
+    if (recording && mediaRecorder) {
+      mediaRecorder.stop();
+      setRecording(false);
+    }
+  };
+
+  const sendAudioMessage = async () => {
+    if (audioBlob) {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+
+      const response = await fetch('https://socketback-6.onrender.com/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.audioUrl) {
+        socket.emit('message', { audioUrl: data.audioUrl });
       }
+
+      setAudioBlob(null);
     }
   };
 
@@ -113,53 +120,6 @@ function App(): JSX.Element {
     });
   };
 
-  const callUser = (id: string) => {
-    const peer = new SimplePeer({
-      initiator: true,
-      trickle: false,
-      stream: stream!
-    });
-
-    peer.on('signal', (data: SignalData) => {
-      socket.emit('signal', { signal: data, to: id });
-    });
-
-    peer.on('stream', (stream: MediaStream) => {
-      if (userVideoRef.current) {
-        userVideoRef.current.srcObject = stream;
-      }
-    });
-
-    socket.on('signal', (data: { from: string, signal: SignalData }) => {
-      peer.signal(data.signal);
-    });
-
-    setPeer(peer);
-  };
-
-  const acceptCall = () => {
-    setCallAccepted(true);
-    const peer = new SimplePeer({
-      initiator: false,
-      trickle: false,
-      stream: stream!
-    });
-
-    peer.on('signal', (data: SignalData) => {
-      socket.emit('signal', { signal: data, to: caller });
-    });
-
-    peer.on('stream', (stream: MediaStream) => {
-      if (userVideoRef.current) {
-        userVideoRef.current.srcObject = stream;
-      }
-    });
-
-    peer.signal(callerSignal!);
-
-    setPeer(peer);
-  };
-
   return (
     <div className="mini-chat-container">
       <h1>Chat flipeot</h1>
@@ -176,7 +136,13 @@ function App(): JSX.Element {
                 </p>
               </div>
             </div>
-            <p className="text">{formatMessage(msg.text)}</p>
+            {msg.text && <p className="text">{formatMessage(msg.text)}</p>}
+            {msg.audioUrl && (
+              <audio controls>
+                <source src={msg.audioUrl} type="audio/mpeg" />
+                Tu navegador no soporta el elemento de audio.
+              </audio>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
@@ -189,18 +155,11 @@ function App(): JSX.Element {
           placeholder="Escribe un mensaje"
         />
         <button onClick={sendMessage}><p><FaArrowUp/></p></button>
+        <button onMouseDown={startRecording} onMouseUp={stopRecording}>
+          {recording ? <FaStop /> : <FaMicrophone />}
+        </button>
+        {audioBlob && <button onClick={sendAudioMessage}>Enviar Audio</button>}
       </div>
-      <div className="video-container">
-        <video ref={myVideoRef} autoPlay playsInline muted />
-        {callAccepted && <video ref={userVideoRef} autoPlay playsInline />}
-      </div>
-      <button onClick={() => callUser('some-user-id')} className='bg-blue-500'>Llamar</button>
-      {incomingCall && !callAccepted && (
-        <div>
-          <h1>Alguien está llamando...</h1>
-          <button onClick={acceptCall}>Aceptar</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -223,6 +182,10 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
+
+
+
+
 
 
 

@@ -48,9 +48,7 @@ const JitsiMeetComponent: React.FC<JitsiMeetComponentProps> = ({ roomName, userN
   }, [roomName, userName]);
 
   return (
-    <div>
-      <div ref={jitsiContainerRef} style={{ height: '600px', width: '800px' }} />
-    </div>
+    <div ref={jitsiContainerRef} style={{ height: '100vh', width: '100vw' }} />
   );
 };
 

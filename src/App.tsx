@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { FaArrowUp } from 'react-icons/fa';
+import { FaArrowUp, FaVideo, FaVideoSlash } from 'react-icons/fa';
 
 import './App.css'; // Asegúrate de crear y usar este archivo CSS
 import JitsiMeetComponent from './jitsiMeetComponent';
@@ -85,46 +85,48 @@ function App(): JSX.Element {
   };
 
   return (
-    <div className="mini-chat-container">
-      <h1>Chat flipeot</h1>
+    <div className={`mini-chat-container ${showJitsi ? 'full-screen' : ''}`}>
+      <div className='head'>
+        <h1>Chat flipeot</h1>
+        <button className='camera' onClick={() => setShowJitsi(!showJitsi)}>
+          {showJitsi ? <FaVideoSlash width={30}  /> : <FaVideo width={30} />}
+        </button>
+      </div>
       
       {loading ? ( // Mostrar mensaje de carga si está cargando
         <div className="loading">Loading KZX...</div>
       ) : (
-        <>
-          <div className="messages-container">
-            {messages.map((msg, index) => (
-              <div key={index} className="message">
-                <div className="cont-a-h">
-                  <p className='ip-avatar'>{msg.ip}</p> 
-                  <div className="message-time">
-                    <p>
-                      {formatMessageTime(msg.createdAt)} {formatDate(msg.createdAt)}
-                      <span style={{ color: userConnected ? '#4CAF50' : '#FF5733', marginLeft:"10px" }}>●</span>
-                    </p>
+        !showJitsi && (
+          <>
+            <div className="messages-container">
+              {messages.map((msg, index) => (
+                <div key={index} className="message">
+                  <div className="cont-a-h">
+                    <p className='ip-avatar'>{msg.ip}</p> 
+                    <div className="message-time">
+                      <p>
+                        {formatMessageTime(msg.createdAt)} {formatDate(msg.createdAt)}
+                        <span style={{ color: userConnected ? '#4CAF50' : '#FF5733', marginLeft:"10px" }}>●</span>
+                      </p>
+                    </div>
                   </div>
+                  <p className="text">{formatMessage(msg.text)}</p>
                 </div>
-                <p className="text">{formatMessage(msg.text)}</p>
-              </div>
-            ))}
-            <div ref={messagesEndRef} /> {/* Referencia al final del contenedor de mensajes */}
-          </div>
-          <div className="container-send">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Escribe un mensaje"
-            />
-            <button onClick={sendMessage}><p><FaArrowUp/></p></button>
-          </div>
-        </>
+              ))}
+              <div ref={messagesEndRef} /> {/* Referencia al final del contenedor de mensajes */}
+            </div>
+            <div className="container-send">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Escribe un mensaje"
+              />
+              <button onClick={sendMessage}><p><FaArrowUp/></p></button>
+            </div>
+          </>
+        )
       )}
-
-      {/* Botón para mostrar/ocultar Jitsi */}
-      <button onClick={() => setShowJitsi(!showJitsi)}>
-        {showJitsi ? 'Ocultar Jitsi' : 'Mostrar Jitsi'}
-      </button>
 
       {/* Renderizar el componente de Jitsi si showJitsi es true */}
       {showJitsi && <JitsiMeetComponent roomName="testRoom" userName="testUser" />}
@@ -152,7 +154,6 @@ function formatDate(timestamp: string): string {
 }
 
 export default App;
-
 
 
 

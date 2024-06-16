@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { FaArrowUp } from 'react-icons/fa';
+
 import './App.css'; // Asegúrate de crear y usar este archivo CSS
+import JitsiMeetComponent from './jitsiMeetComponent';
 
 const socket: Socket = io('https://socketback-6.onrender.com/');
 const messageSound = new Audio('/audio/noti.mpeg'); // Reemplaza con la ruta correcta de tu archivo de sonido
@@ -11,6 +13,7 @@ function App(): JSX.Element {
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [userConnected, setUserConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true); // Estado de carga
+  const [showJitsi, setShowJitsi] = useState<boolean>(false); // Estado para mostrar Jitsi
   const messagesEndRef = useRef<HTMLDivElement>(null); // Referencia al final del contenedor de mensajes
 
   interface IMessage {
@@ -117,6 +120,14 @@ function App(): JSX.Element {
           </div>
         </>
       )}
+
+      {/* Botón para mostrar/ocultar Jitsi */}
+      <button onClick={() => setShowJitsi(!showJitsi)}>
+        {showJitsi ? 'Ocultar Jitsi' : 'Mostrar Jitsi'}
+      </button>
+
+      {/* Renderizar el componente de Jitsi si showJitsi es true */}
+      {showJitsi && <JitsiMeetComponent roomName="testRoom" userName="testUser" />}
     </div>
   );
 }
